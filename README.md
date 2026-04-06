@@ -19,6 +19,14 @@ Remove the "Veo" text watermark from Google Veo-generated videos using **mathema
 
 No cloud services. No AI hallucination. No quality loss. Just math.
 
+## What's New
+
+- **Improved watermark masks** — remastered 720p and 1080p alpha maps using golden frame-differencing from multiple video sources (10+ transition pairs), significantly more accurate than the initial release
+- **Better output quality** — upgraded video encoder delivers higher fidelity output with improved compression efficiency (High profile, B-frames, multi-reference)
+- **Enhanced AI cleanup** — tuned per-resolution denoise parameters with expanded inference context, resulting in cleaner watermark removal while preserving background texture
+- **Progress bar** — real-time ASCII progress indicator during video processing
+- **Quieter output** — reduced log verbosity in normal mode; use `--verbose` for detailed diagnostics
+
 ## How It Works
 
 ![Drag & Drop Demo](artworks/veo-watermark-remover.gif)
@@ -59,6 +67,7 @@ No cloud services. No AI hallucination. No quality loss. Just math.
 - **AI denoise** — GPU-accelerated FDnCNN cleanup for residual artifacts (Vulkan)
 - **Fast** — 720p at ~50 fps, 1080p at ~18 fps (Release build, Ryzen 9 + RTX)
 - **Landscape + Portrait** — supports both orientations at 720p and 1080p
+- **Progress bar** — real-time processing progress in the terminal
 
 ## Technical Details
 
@@ -68,7 +77,7 @@ This tool uses the same **reverse alpha blending** algorithm as [GeminiWatermark
 original = (watermarked - alpha * logo_value) / (1 - alpha)
 ```
 
-The Veo watermark alpha maps were extracted using frame differencing from dark-background Veo videos, with background correction for non-zero pixel values. AI denoise (FDnCNN, NCNN + Vulkan GPU) handles residual edge artifacts.
+The Veo watermark alpha maps were extracted using frame differencing from Veo-generated videos with watermark on/off transitions. Multiple golden pairs (Lightning flash, Light bulb, Sunrise scenes) were averaged for maximum accuracy. AI denoise (FDnCNN, NCNN + Vulkan GPU) handles residual edge artifacts from video compression.
 
 For the full technical background on reverse alpha blending, see:
 **[Removing Gemini AI Watermarks: A Deep Dive into Reverse Alpha Blending](https://allenkuo.medium.com/removing-gemini-ai-watermarks-a-deep-dive-into-reverse-alpha-blending-bbbd83af2a3f)**
@@ -87,29 +96,18 @@ For the full technical background on reverse alpha blending, see:
 
 > **Single file download — no installer, no setup.**
 
-| Platform | File | Size | Notes |
-|----------|------|------|-------|
-| **Windows x64** | `GeminiWatermarkTool-Video.exe` | 16 MB (zip) / 36 MB | Drag & drop supported |
-| **Linux x64** | `GeminiWatermarkTool-Video` | 20 MB (zip) / 46 MB | `chmod +x` before running |
-| **macOS Universal** | `GeminiWatermarkTool-Video` | 31 MB (zip) / 65 MB | Intel + Apple Silicon |
+| Platform | File | Notes |
+|----------|------|-------|
+| **Windows x64** | `GeminiWatermarkTool-Video.exe` | Drag & drop supported |
+| **Linux x64** | `GeminiWatermarkTool-Video` | `chmod +x` before running |
+| **macOS Universal** | `GeminiWatermarkTool-Video` | Intel + Apple Silicon |
 
-### Why is the Video build larger than standard GWT?
-
-The standard [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool) (image-only) is ~18 MB. The Video build adds ~18 MB for the embedded H.264 video codec (OpenH264, BSD license) and MP4 container support — a necessary cost for standalone mp4-to-mp4 processing without external dependencies.
-
-macOS Universal is larger because it contains **two architectures** (x86_64 + ARM64) in a single binary.
+Download the latest release from the [Releases page](https://github.com/allenk/VeoWatermarkRemover/releases/latest).
 
 ### Verification
 
-SHA256 checksums for each platform:
+SHA256 checksums are provided on each release page. Verify with:
 
-| Platform | SHA256 |
-|----------|--------|
-| Windows | `182f60c539a8ca5a236b481835c7f38e8a9c41f5ad6ec99281cf5c2e44de4a42` |
-| Linux | *(see release page)* |
-| macOS | *(see release page)* |
-
-You can verify with:
 ```bash
 # Windows (PowerShell)
 Get-FileHash .\GeminiWatermarkTool-Video.exe -Algorithm SHA256
@@ -117,12 +115,6 @@ Get-FileHash .\GeminiWatermarkTool-Video.exe -Algorithm SHA256
 # Linux / macOS
 sha256sum GeminiWatermarkTool-Video
 ```
-
-### VirusTotal (Windows)
-
-**0 detections / 72 engines** — verified clean.
-
-[View full VirusTotal report](https://www.virustotal.com/gui/file/182f60c539a8ca5a236b481835c7f38e8a9c41f5ad6ec99281cf5c2e44de4a42)
 
 > **If you're not comfortable running an unsigned executable, that's completely fine.**
 > This is a demo build for early testing. The Veo removal feature will be integrated into the main [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool) release when ready, with full source code, CI/CD builds, and cross-platform support.
@@ -191,4 +183,4 @@ When the Veo feature is stable, it will be merged into [GeminiWatermarkTool](htt
 
 This demo build is based on [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool) (MIT License).
 
-It includes third-party open-source components (NCNN, OpenCV, OpenH264, etc.) under their respective permissive licenses. Full license texts are available in the respective project repositories.
+It includes third-party open-source components (NCNN, OpenCV, etc.) under their respective permissive licenses. Full license texts are available in the respective project repositories.
