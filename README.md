@@ -5,6 +5,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%20|%20Linux%20|%20macOS-blue.svg)](#download)
 [![Based on GWT](https://img.shields.io/badge/Based%20on-GeminiWatermarkTool-green.svg)](https://github.com/allenk/GeminiWatermarkTool)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/allenk/GeminiWatermarkTool/blob/main/LICENSE)
+[![Support on Ko-fi](https://img.shields.io/badge/Support-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/allenkoss)
 
 > **NEW: Watch the demo video on YouTube — [Veo Watermark Remover in Action](https://www.youtube.com/watch?v=bPDhD67C_rI)**
 
@@ -19,55 +20,62 @@ Remove the "Veo" text watermark from Google Veo-generated videos using **mathema
 
 No cloud services. No AI hallucination. No quality loss. Just math.
 
-## What's New (v0.6.0)
+## What's New (v0.6.1)
+
+- **Survives intro fade-ins.** Many community-supplied 720p clips
+  start with a brief fade-in or splash where the watermark isn't yet
+  composited, and v0.6.0 saw NCC = 0 on frame 0 and SKIPped the whole
+  file. v0.6.1 probes 12 frames spread across the video's first 90%
+  and picks the best (sample, tuple) pair, so fade-ins no longer
+  cause a false SKIP. Five previously-skipped community samples now
+  auto-detect cleanly.
+- **Adaptive per-frame alpha refinement.** The new
+  [bisection feedback loop](#how-it-handles-difficult-clips) doesn't
+  just estimate the alpha intensity — it APPLIES the candidate value,
+  evaluates whether the result looks like the surrounding background,
+  and adjusts up (residue remained) or down (dark hole) for up to
+  five rounds per frame. Visual-consistency goal rather than pure
+  prediction, so clips with foreground motion or heterogeneous
+  backgrounds get a per-frame scale that actually fits.
+- **Per-shot seed + per-frame change cap.** A stable per-video
+  baseline (median of 12 sample-frame estimates) anchors the
+  bisection, and a small per-frame change cap (±0.05) prevents any
+  single bad assessment from causing a visible flash. Output stays
+  smooth even on content where the bisection metric is locally noisy.
+- **`--variant 720p-1` / `--variant 720p-2` escape hatch in the
+  SKIP hint.** When auto-detect can't lock on, the SKIP message
+  now suggests the manual override flags directly. Useful for clips
+  that auto fails on (rare with v0.6.1's multi-frame probe, but the
+  escape hatch is documented).
+- **Honest limit acknowledged.** Some clips with very strong
+  per-frame content motion (medical illustrations with hair strands,
+  rapid-cut animation, etc.) still produce a small residue on a few
+  frames. See
+  [Manual touch-up workflow](#manual-touch-up-workflow-for-difficult-clips)
+  below for the recommended workflow when the automatic result isn't
+  good enough.
+
+## Previous Release Highlights (v0.6.0)
 
 - **720p Gemini 3.5 diamond removal — now auto-detected.** Both
-  geometries observed in real Veo 720p outputs are calibrated and
-  shipping:
-  - **720p-1 standard** (48×48 diamond at margin 72,72) — low-bitrate
-    tier (~1.5 Mbps)
-  - **720p-2 compact** (44×44 diamond at margin 29,40) — high-bitrate
-    tier (~7 Mbps)
-
-  No more workaround of re-rendering to 1080p — just drop your 720p
-  file on the tool. Auto-detect picks the right geometry per file via
-  NCC scoring. Validated against community samples from
-  [issue #2](https://github.com/allenk/VeoWatermarkRemover/issues/2)
-  and [issue #4](https://github.com/allenk/VeoWatermarkRemover/issues/4).
-- **Dynamic per-frame alpha estimation.** The 720p watermark intensity
-  varies across encoding tiers (a single static alpha map can't cover
-  both compact and standard variants — they differ by ~3× in effective
-  strength). v0.6.0 estimates the per-frame alpha multiplier directly
-  from each frame's pixels using a median-ratio over high-reference-
-  alpha pixels, then applies it to the reverse blend. The result
-  recovers within ~5% of hand-tuned values automatically. 1080p stays
-  on the validated static path — baseline is byte-for-byte unchanged.
-- **Position refinement at video startup.** A ±4 px local NCC search
-  around the tuple anchor snaps to the actual diamond position. Costs
-  one extra correlation pass on the sample frame — negligible — and
-  absorbs minor encoding-tier position drift without recalibration.
-- **Transcoder timing fidelity** — fixes the duration / FPS drift
-  reported on previous releases. Output now matches input exactly on:
-  - **Frame count** — decoder reorder buffer is properly drained, no
-    more silently losing the last 1-3 tail frames
-  - **Duration** — output `duration_ts` matches input to the tick;
-    per-packet duration is stamped so the MP4 muxer doesn't truncate
-    the final frame
-  - **FPS metadata** — `r_frame_rate` and `avg_frame_rate` propagated
-    from input so downstream NLE / web tools see the correct numbers
-
-  If you were re-aligning v0.5.0 output against the original in a
-  video editor (per
-  [issue #4](https://github.com/allenk/VeoWatermarkRemover/issues/4)),
-  v0.6.0 should land at the same duration as the source — no
-  alignment step needed.
-- **Quieter default output** — FFmpeg container parser warnings (e.g.
-  the `Unknown cover type: 0x1` line emitted on C2PA-tagged Veo
-  videos) are suppressed at default verbosity. They still appear
-  under `--verbose` for debugging.
-- **Smarter auto-detect SKIP hint** — when a file isn't a calibrated
-  Gemini 3.5 video, the SKIP message now correctly states both 1080p
-  and 720p are supported in auto mode.
+  geometries observed in real Veo 720p outputs are calibrated:
+  720p-1 standard (48×48 at margin 72,72, ~1.5 Mbps tier) and
+  720p-2 compact (44×44 at margin 29,40, ~7 Mbps tier). Auto-detect
+  picks the right one via NCC scoring.
+- **Dynamic per-frame alpha estimation.** First release with
+  per-frame alpha intensity recovery instead of a static multiplier.
+  v0.6.1 evolved this into the adaptive bisection above.
+- **Position refinement at video startup.** A ±4 px local NCC
+  search around the tuple anchor snaps to the actual diamond
+  position, absorbing encoding-tier drift without recalibration.
+- **Transcoder timing fidelity.** Output frame count, duration, and
+  FPS metadata match input exactly — no more silently dropping tail
+  frames or shifting duration. Three classic libavcodec API misuses
+  (decoder flush, packet duration stamping, frame-rate metadata
+  propagation) fixed in one go.
+- **Quieter default output** — FFmpeg container parser warnings
+  (e.g. the `Unknown cover type: 0x1` line emitted on C2PA-tagged
+  Veo videos) suppressed at default verbosity.
 
 ### Help Wanted: Other Resolutions
 
@@ -161,6 +169,92 @@ size for each new encoding profile.
 >   one at the wrong position would damage the frame, so you have to
 >   pick.
 
+## How It Handles Difficult Clips
+
+The v0.6.1 adaptive loop runs once per frame and behaves like a small
+auto-tuner. For each frame:
+
+1. Compute the per-frame NCC against the calibrated diamond template.
+   If NCC is below the gate (heavy foreground occlusion), the frame
+   is left untouched — leaving the diamond visible on those few
+   frames is more honest than scribbling synthetic content over them.
+2. Sample the local background ring around the watermark region.
+3. Pick a candidate alpha intensity (starting from the per-shot
+   seed value learned from the first 12 sample frames).
+4. APPLY the candidate, measure whether the resulting region matches
+   the surrounding background:
+   - **Brighter than surroundings → residue still present →
+     increase intensity.**
+   - **Darker than surroundings → over-subtracted (dark hole) →
+     decrease intensity.**
+5. Up to 5 bisection rounds. The change between adjacent frames is
+   capped at ±0.05 so any single bad assessment can't cause a
+   visible flash.
+
+The goal is **visual consistency with the local context**, not a
+prediction of some "true" alpha value. Same content + same diamond →
+same removal. Different scenes within a clip get different per-frame
+intensities, but each is correct for its own surroundings.
+
+## Manual Touch-Up Workflow for Difficult Clips
+
+The automatic pipeline handles **most** Gemini 3.5 video samples
+cleanly, but some content classes still resist a fully automatic
+solution — heavy per-frame motion, foreground objects overlapping
+the watermark region, medical-illustration backgrounds with
+high-frequency detail next to the diamond, etc. If you run a video
+through v0.6.1 and a small number of frames still show residue or
+a faint outline, the practical workflow is:
+
+```bash
+# 1. Run the automatic pipeline first
+GeminiWatermarkTool-Video video.mp4
+
+# 2. Decompose the auto-processed output into individual frames
+ffmpeg -i video_processed.mp4 frames/frame_%04d.png
+
+# 3. Open GUI mode (image-side GeminiWatermarkTool) on the problem
+#    frames only. Use Custom region mode and tune the Alpha intensity
+#    slider until that frame looks clean. Save the touched-up PNG
+#    back to the same path.
+#    (See https://github.com/allenk/GeminiWatermarkTool for the GUI
+#    build that ships the Alpha intensity slider in Custom mode.)
+
+# 4. Re-encode the frames back into a video, copying audio from the
+#    original
+ffmpeg -framerate 24 -i frames/frame_%04d.png \
+       -i video.mp4 -map 0:v -map 1:a \
+       -c:v libx264 -crf 14 -preset slow -pix_fmt yuv420p \
+       -c:a copy \
+       video_touched_up.mp4
+```
+
+For most clips you'll only need to manually fix a handful of frames.
+The GUI's Custom-mode Alpha intensity slider lets you dial in the
+exact value visually; values around `0.55-0.70` (V1-relative) cover
+most current Gemini 3.5 720p content.
+
+### Sigma Tuning Tips
+
+The default AI denoise sigma is tuned for photographic / video
+content (sigma = 50 for 1080p, sigma = 20 for 720p Veo). If your
+output looks too blurry or has slight unnatural artifacts on
+illustration / animation content, try a **smaller sigma**:
+
+```bash
+# Anime / illustration content often looks best with sigma ~15
+GeminiWatermarkTool-Video --sigma 15 video.mp4
+
+# Photographic content where AI denoise is too aggressive
+GeminiWatermarkTool-Video --sigma 25 video.mp4
+```
+
+Lower sigma = less smoothing = sharper output but residual H.264
+ringing artifacts may stay visible near the WM edges. Higher sigma
+= more smoothing = cleaner edges but slight loss of detail. The
+defaults are a compromise; for content classes with distinct
+aesthetics, manual tuning helps.
+
 ## Features
 
 - **Single executable** — standalone, zero dependencies, zero installation
@@ -170,15 +264,25 @@ size for each new encoding profile.
 - **AI denoise** — GPU-accelerated FDnCNN cleanup for residual artifacts (Vulkan)
 - **Gemini 3.5 diamond removal** (default, v0.5.0+) — handles the new
   watermark layout out of the box; v0.6.0 adds 720p (both standard
-  and compact variants) alongside the existing 1080p support
-- **Dynamic per-frame alpha estimation** (v0.6.0+, 720p) — recovers
-  the per-encoding-tier watermark intensity automatically; no manual
-  tuning required
-- **Tick-exact transcoder timing** (v0.6.0+) — frame count, duration,
-  and FPS metadata match input exactly; no drift in NLE / editor
-  alignment
-- **Legacy "Veo" text removal** (`--legacy`) — for pre-Gemini-3.5 videos;
-  the previous default behaviour still available behind a single flag
+  and compact variants) alongside 1080p
+- **Adaptive per-frame alpha refinement** (v0.6.1+, 720p) — bisection
+  feedback loop applies a candidate intensity, measures the result
+  against the local background, and adjusts up/down per frame; the
+  change between adjacent frames is capped to prevent visible
+  flashes
+- **Multi-frame detection probe** (v0.6.1+) — probes 12 frames
+  across the video instead of just frame 0, so intro fade-ins no
+  longer cause a false SKIP
+- **Tick-exact transcoder timing** (v0.6.0+) — frame count,
+  duration, and FPS metadata match input exactly; no drift in NLE /
+  editor alignment
+- **`--variant` escape hatch** — force a known 720p geometry if
+  auto-detect can't lock on (very rare with v0.6.1)
+- **`--sigma` for content-aware denoise** — lower for animation /
+  illustration, higher for photographic content
+- **Legacy "Veo" text removal** (`--legacy`) — for pre-Gemini-3.5
+  videos; the previous default behaviour still available behind a
+  single flag
 - **Progress bar** — real-time processing progress in the terminal
 
 ## Technical Details
@@ -292,6 +396,12 @@ When the Veo feature is stable, it will be merged into [GeminiWatermarkTool](htt
 [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool) is an open-source tool for removing Gemini AI visible watermarks from images. It supports GUI + CLI dual-mode operation, cross-platform deployment (Windows / Linux / macOS / Android), and optional AI denoise with NCNN + Vulkan GPU acceleration.
 
 **Author:** Allen Kuo ([@allenk](https://github.com/allenk))
+
+## Support This Project
+
+If this tool saved you time and you'd like to help keep it going, you can [support on Ko-fi](https://ko-fi.com/allenkoss). Every public release goes through GitHub Actions CI on Windows / Linux / macOS, and the binary archives live in the Releases section — small contributions help cover runner minutes and storage so the project can keep building cross-platform binaries for free. Not required, just appreciated.
+
+Bug reports, sample videos, and pull requests remain the most valuable contributions and always will be — if you don't have anything to send via Ko-fi, opening an [issue](https://github.com/allenk/VeoWatermarkRemover/issues) with a clip the tool can't handle is just as helpful (often more so).
 
 ## License
 
