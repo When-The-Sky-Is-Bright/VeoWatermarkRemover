@@ -366,9 +366,21 @@ For the full technical background on reverse alpha blending, see:
 
 Download the latest release from the [Releases page](https://github.com/allenk/VeoWatermarkRemover/releases/latest).
 
-### Verification
+### Verification & Safety
 
-SHA256 checksums are provided on each release page. Verify with:
+**Every release is built by GitHub Actions from this repository's public, MIT-licensed source** — in a clean, throwaway CI runner, with public build logs. No human ever touches the binary between source and release, so there is no step where anything could be tampered with. You can read the source, inspect the build workflow, and rebuild the exact binary yourself.
+
+**Independent VirusTotal scans** for the v0.6.3 binaries — the SHA256 is in each link, so you can match it against the file you downloaded:
+
+| Platform | VirusTotal scan |
+|---|---|
+| **Windows x64** | [virustotal.com/…706f1731](https://www.virustotal.com/gui/file/f1544edff72b7f20bda25b79bcc9cc6d1ba57c49e9fc5f9b28d1b645706f1731) |
+| **Linux x64** | [virustotal.com/…08a0936b](https://www.virustotal.com/gui/file/07a3f60c38cb5840458fc44f4cf07bf3b806723915cea65ba37f9b5608a0936b) |
+| **macOS Universal** | [virustotal.com/…a50e62d2](https://www.virustotal.com/gui/file/62325e82c88560e5ebd20c640941908646a41e47b09870662eb10901a50e62d2) |
+
+**About antivirus false positives.** The binaries are **unsigned**, and every new release is a brand-new file your antivirus has never seen. Heuristic / ML-based scanners are twitchy about unsigned executables with zero reputation, so a fresh release can occasionally trip a *generic* detection (a `Wacatac` / `AIDetect`-style label) even though nothing is wrong — it's about the file being new and unsigned, not about what the program does. If your antivirus flags it, match the SHA256 against the scans above, restore it from quarantine (or add an exclusion), or build it yourself from source. Proper code signing is on the roadmap to stop this recurring.
+
+**Verify your download (SHA256):**
 
 ```bash
 # Windows (PowerShell)
