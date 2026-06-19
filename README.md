@@ -19,12 +19,17 @@ This is a **demo/preview build** of the upcoming Veo watermark removal feature f
 
 Remove the "Veo" text watermark from Google Veo-generated videos using **mathematically precise reverse alpha blending** — the same proven technique behind [GeminiWatermarkTool](https://github.com/allenk/GeminiWatermarkTool).
 
-No cloud services. No generative fill, no hallucinated pixels, no quality loss. The on-device AI only *picks the intensity* — the removal itself is pure, reversible math.
+No cloud services. No generative fill, no hallucinated pixels, no quality loss — the removal is pure, reversible math. An optional on-device ML assist (`--ml`) can fine-tune the intensity on tricky clips.
 
-## What's New (v0.6.3)
+## What's New (v0.6.4)
 
-- **ML-enhanced removal — introducing "Alpha Judge".** The single biggest factor in a clean result is choosing the exact removal intensity for each clip. v0.6.3 adds **Alpha Judge**, a small neural network (DNN) that runs **entirely on your own machine** and predicts the ideal intensity straight from the video. It works *alongside* the analytical estimator — two independent reads combined into one — so the hardest clips (dark, low-contrast, or busy backgrounds) come out cleaner than either method alone. Still 100% offline, nothing uploaded, with the same deterministic reverse-alpha math doing the actual removal.
-- **New: removes the small "Veo" text watermark.** Google's **Flow** video generator started stamping a small "Veo" wordmark in the bottom-right corner of its newest outputs. v0.6.3 detects and removes it automatically — **no flags, no setup**. The tool now recognises which watermark a clip carries (the Gemini diamond or the small Veo text) and cleans the right one on its own, in both landscape and portrait.
+- **More stable by default — the ML assist is now opt-in (`--ml`).** v0.6.3 turned the "Alpha Judge" ML intensity predictor on by default. Across the huge variety of real-world clips, though, it occasionally over-corrected and made a clip *worse* than the plain analytical estimate. So the default is back to the **proven, predictable analytical intensity** — reliable for the common case — and Alpha Judge is now a one-flag opt-in (`--ml`) for the minority of clips whose intensity genuinely varies a lot. By default the tool no longer spins up the GPU for ML either, so it starts clean on more systems.
+- **New "Veo" text — more reliable detection + 1080p support.** Fixed a case where a clip with the small "Veo" text over a busy foreground (e.g. shot through grass) was misread as the Gemini diamond and left the text in place ([#18](https://github.com/allenk/VeoWatermarkRemover/issues/18)) — it's now identified correctly. Also added the **1080p** small "Veo" wordmark (v0.6.3 handled 720p only).
+
+## Previous Release Highlights (v0.6.3)
+
+- **Alpha Judge ML intensity assist (now opt-in via `--ml`).** A small neural network (DNN) that runs entirely on your own machine and predicts the removal intensity from the video, combined with the analytical estimator. Helps clips whose intensity varies a lot; 100% offline, nothing uploaded. (Off by default since v0.6.4 — see above.)
+- **Small "Veo" text watermark removal.** Google's **Flow** generator stamps a small "Veo" wordmark in the bottom-right corner of its newest outputs. The tool auto-detects which watermark a clip carries (the Gemini diamond or the small Veo text) and removes the right one — no flags, landscape or portrait.
 
 ## Previous Release Highlights (v0.6.2)
 
@@ -188,6 +193,9 @@ size for each new encoding profile.
 
 # Specify output path
 ./GeminiWatermarkTool-Video -i video.mp4 -o cleaned.mp4
+
+# Enable the ML intensity assist (opt-in) for a clip whose intensity varies a lot
+./GeminiWatermarkTool-Video --ml video.mp4
 
 # Pre-3.5 with explicit input / output
 ./GeminiWatermarkTool-Video --legacy -i old_video.mp4 -o cleaned.mp4
@@ -374,9 +382,9 @@ Download the latest release from the [Releases page](https://github.com/allenk/V
 
 | Platform | VirusTotal scan |
 |---|---|
-| **Windows x64** | [virustotal.com/…706f1731](https://www.virustotal.com/gui/file/f1544edff72b7f20bda25b79bcc9cc6d1ba57c49e9fc5f9b28d1b645706f1731) |
-| **Linux x64** | [virustotal.com/…08a0936b](https://www.virustotal.com/gui/file/07a3f60c38cb5840458fc44f4cf07bf3b806723915cea65ba37f9b5608a0936b) |
-| **macOS Universal** | [virustotal.com/…a50e62d2](https://www.virustotal.com/gui/file/62325e82c88560e5ebd20c640941908646a41e47b09870662eb10901a50e62d2) |
+| **Windows x64** | [virustotal.com/…de4ab955](https://www.virustotal.com/gui/file/e6a0fd8e1c6cbe26da02dafd8a1df4645ac35a565acab58e3171995dde4ab955) |
+| **Linux x64** | [virustotal.com/…b43d74f9b](https://www.virustotal.com/gui/file/dd6d27547cee59555a87e720c8ef41c68373d78f94356cca31ab817b43d74f9b) |
+| **macOS Universal** | [virustotal.com/…1def4d5e](https://www.virustotal.com/gui/file/b97c3c3d27c6c7e4e672e16b772a4e21ae4a93d4d15fcd6a6129ec441def4d5e) |
 
 **About antivirus false positives.** The binaries are **unsigned**, and every new release is a brand-new file your antivirus has never seen. Heuristic / ML-based scanners are twitchy about unsigned executables with zero reputation, so a fresh release can occasionally trip a *generic* detection (a `Wacatac` / `AIDetect`-style label) even though nothing is wrong — it's about the file being new and unsigned, not about what the program does. If your antivirus flags it, match the SHA256 against the scans above, restore it from quarantine (or add an exclusion), or build it yourself from source. Proper code signing is on the roadmap to stop this recurring.
 
